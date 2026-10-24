@@ -429,10 +429,14 @@ final class SelfTest {
             net.neoforged.neoforge.common.util.FakePlayerFactory.getMinecraft(level);
         final List<ResourceLocation> wiremills = List.of(ResourceLocation.parse("gtceu:lv_wiremill"),
             ResourceLocation.parse("gtceu:uv_wiremill"));
+        // As EMI sends it: the programmed circuit is an input of the transfer; gttweaks then moves it
+        // off the pattern's inputs onto the pattern itself.
+        final ResourceAmount circuit = itemAmount("gtceu:programmed_circuit", 1);
         state.lastTransfer = new com.wraithhawit.rsapg.tree.RecipeRequest(
-            com.wraithhawit.rsapg.tree.RecipeRequest.Kind.PROCESSING, "Wiremill", List.of(List.of(tin)),
-            List.of(List.of(wire)), wiremills, null);
-        acc().rsapg$transferProcessingRecipe(player, new ArrayList<>(List.of(new ArrayList<>(List.of(tin)))),
+            com.wraithhawit.rsapg.tree.RecipeRequest.Kind.PROCESSING, "Wiremill",
+            List.of(List.of(tin), List.of(circuit)), List.of(List.of(wire)), wiremills, null);
+        acc().rsapg$transferProcessingRecipe(player,
+            new ArrayList<>(List.of(new ArrayList<>(List.of(tin)), new ArrayList<>(List.of(circuit)))),
             new ArrayList<>(List.of(new ArrayList<>(List.of(wire)))));
         AdvancedGridLogic.encodeAndPlace(grid, "selftest");
         check("auto-place processing with note: output slot empty", output().isEmpty(), describe(output()));

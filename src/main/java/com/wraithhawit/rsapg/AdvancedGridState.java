@@ -14,6 +14,7 @@ public final class AdvancedGridState {
     /** Set while an encode waits for a blank pattern that is being crafted. */
     @Nullable
     PatternType pendingType;
+    net.minecraft.world.item.ItemStack pendingRecipe = net.minecraft.world.item.ItemStack.EMPTY;
     /** The waiting encode asked for a fluid blank (otherwise a plain one). */
     boolean pendingFluid;
     String requester = "Advanced Pattern Grid";
@@ -34,6 +35,7 @@ public final class AdvancedGridState {
     /** Drops a waiting encode (a recipe-tree batch never waits on a crafted blank). */
     public void cancelPending() {
         pendingType = null;
+        pendingRecipe = net.minecraft.world.item.ItemStack.EMPTY;
     }
 
     public GridStatus shownStatus() {

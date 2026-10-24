@@ -36,6 +36,15 @@ public interface PatternGridBlockEntityAccessor {
     @Invoker("getCraftingMatrix")
     RecipeMatrixContainer rsapg$getCraftingMatrix();
 
+    @Invoker("getSmithingTableMatrix")
+    RecipeMatrixContainer rsapg$getSmithingTableMatrix();
+
+    @Invoker("getStonecutterSelectedRecipe")
+    int rsapg$getStonecutterSelectedRecipe();
+
+    @Invoker("setStonecutterSelectedRecipe")
+    void rsapg$setStonecutterSelectedRecipe(int index);
+
     @Invoker("isFuzzyMode")
     boolean rsapg$isFuzzyMode();
 

@@ -50,9 +50,7 @@ public final class TreeEncoder {
         final FilteredContainer output = acc.rsapg$getPatternOutput();
 
         // Set the player's grid aside.
-        final PatternType typeBefore = acc.rsapg$getPatternType();
-        final boolean fuzzyBefore = acc.rsapg$isFuzzyMode();
-        final ItemStack recipeBefore = AdvancedGridLogic.draft(grid, typeBefore);
+        final GridRecipeSnapshot recipeBefore = new GridRecipeSnapshot(grid);
         final ItemStack outputBefore = output.getItem(0).copy();
         output.setItem(0, ItemStack.EMPTY);
 
@@ -97,7 +95,7 @@ public final class TreeEncoder {
                 }
             }
         } finally {
-            restore(grid, acc, output, typeBefore, fuzzyBefore, recipeBefore, outputBefore, player);
+            restore(grid, output, recipeBefore, outputBefore, player);
         }
         RSAPG.LOG.info("tree: {} encoded {} of {} planned patterns{}", player.getGameProfile().getName(), placed,
             plan.stream().filter(a -> a.line().status() == PlanLine.Status.PLACE).count(),
@@ -149,8 +147,8 @@ public final class TreeEncoder {
             return "RS could not build this recipe in the grid";
         }
         final AdvancedGridHost host = (AdvancedGridHost) grid;
-        AdvancedGridLogic.encode(grid, player.getGameProfile().getName());
-        if (!acc.rsapg$getPatternOutput().getItem(0).isEmpty()) {
+        final boolean encoded = AdvancedGridLogic.tryEncode(grid, player.getGameProfile().getName());
+        if (encoded && !acc.rsapg$getPatternOutput().getItem(0).isEmpty()) {
             return null;
         }
         final GridStatus status = host.rsapg$state().shownStatus();
@@ -164,16 +162,10 @@ public final class TreeEncoder {
         };
     }
 
-    private static void restore(final PatternGridBlockEntity grid, final PatternGridBlockEntityAccessor acc,
-                                final FilteredContainer output, final PatternType type, final boolean fuzzy,
-                                @Nullable final ItemStack recipe, final ItemStack outputBefore,
+    private static void restore(final PatternGridBlockEntity grid, final FilteredContainer output,
+                                final GridRecipeSnapshot recipe, final ItemStack outputBefore,
                                 final ServerPlayer player) {
-        acc.rsapg$clear();
-        if (recipe != null) {
-            acc.rsapg$copyPattern(recipe);
-        }
-        acc.rsapg$setPatternType(type);
-        acc.rsapg$setFuzzyMode(fuzzy);
+        recipe.restore(grid);
         if (!outputBefore.isEmpty()) {
             if (output.getItem(0).isEmpty()) {
                 output.setItem(0, outputBefore);

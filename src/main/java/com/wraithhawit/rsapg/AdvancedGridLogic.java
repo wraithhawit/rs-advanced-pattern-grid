@@ -88,27 +88,37 @@ public final class AdvancedGridLogic {
 
     /** The create-pattern button of an advanced grid. */
     public static void encode(final PatternGridBlockEntity grid, final String requester) {
+        tryEncode(grid, requester);
+    }
+
+    /** Returns true only when this request reached the encoding path. */
+    public static boolean tryEncode(final PatternGridBlockEntity grid, final String requester) {
         final AdvancedGridState state = host(grid).rsapg$state();
         state.requester = requester;
         final Level level = grid.getLevel();
         if (level == null) {
-            return;
+            return false;
         }
         final PatternType type = acc(grid).rsapg$getPatternType();
         final ItemStack draft = draft(grid, type);
         if (draft == null) {
             // RS would do nothing either; the screen only enables the button for a ready recipe.
-            state.pendingType = null;
-            return;
+            state.cancelPending();
+            return false;
         }
         final Network network = grid.getNetworkForItem();
         if (network == null || !grid.isGridActive()) {
             setEncodeStatus(grid, GridStatus.NO_NETWORK);
-            return;
+            return false;
         }
         final StorageNetworkComponent storage = network.getComponent(StorageNetworkComponent.class);
         final Actor actor = new GridActor(requester);
         flushInput(grid, storage, actor);
+        if (!grid.getPatternInput().isEmpty()) {
+            state.cancelPending();
+            setEncodeStatus(grid, GridStatus.NETWORK_FULL);
+            return false;
+        }
 
         final boolean wantFluid = type == PatternType.CRAFTING && Rfs.qualifies(draft, level);
         final FilteredContainer output = acc(grid).rsapg$getPatternOutput();
@@ -118,7 +128,7 @@ public final class AdvancedGridLogic {
             // Same kind already in the output slot: RS re-encodes it without using a blank.
             runRs(grid, level, storage, actor);
             finish(grid, GridStatus.NONE, "re-encoded the " + kind(wantFluid) + " pattern in the output slot", type);
-            return;
+            return true;
         }
 
         ItemStack blank = take(storage, wantFluid, actor);
@@ -128,7 +138,7 @@ public final class AdvancedGridLogic {
             if (!current.isEmpty()) {
                 runRs(grid, level, storage, actor);
                 finish(grid, GridStatus.PLAIN_FALLBACK, "no fluid blank or buckets; re-encoded the plain pattern", type);
-                return;
+                return true;
             }
             blank = take(storage, false, actor);
             fallback = !blank.isEmpty();
@@ -136,7 +146,7 @@ public final class AdvancedGridLogic {
         }
         if (blank.isEmpty()) {
             noBlank(grid, network, state, wantFluid, actor, type);
-            return;
+            return false;
         }
         if (!current.isEmpty()) {
             // Wrong kind in the output slot: hand it back as a blank of its own kind.
@@ -148,7 +158,7 @@ public final class AdvancedGridLogic {
                 setEncodeStatus(grid, GridStatus.NETWORK_FULL);
                 RSAPG.LOG.info("{}: network full, could not return the {} pattern from the output slot",
                     where(grid), kind(Rfs.isFluidPattern(current)));
-                return;
+                return false;
             }
             output.setItem(0, ItemStack.EMPTY);
         }
@@ -157,6 +167,7 @@ public final class AdvancedGridLogic {
         finish(grid, fallback ? GridStatus.PLAIN_FALLBACK : GridStatus.NONE, "used a " + source, type);
         // Craft ahead: top the spares back up soon instead of waiting for the next check.
         state.nextSpareTick = Math.min(state.nextSpareTick, state.ticks + 1);
+        return true;
     }
 
     /**
@@ -166,7 +177,9 @@ public final class AdvancedGridLogic {
      * else into network storage. The player is told where it went on the action bar.
      */
     public static void encodeAndPlace(final PatternGridBlockEntity grid, final String requester) {
-        encode(grid, requester);
+        if (!tryEncode(grid, requester)) {
+            return;
+        }
         final AdvancedGridState state = host(grid).rsapg$state();
         final FilteredContainer output = acc(grid).rsapg$getPatternOutput();
         final ItemStack pattern = output.getItem(0);
@@ -216,23 +229,25 @@ public final class AdvancedGridLogic {
         }
         final com.refinedmods.refinedstorage.common.autocrafting.ProcessingPatternState processing =
             pattern.get(DataComponents.INSTANCE.getProcessingPatternState());
-        final java.util.Set<ResourceKey> made = new java.util.HashSet<>();
-        if (processing != null) {
-            processing.outputs().forEach(o -> o.ifPresent(amount -> made.add(amount.resource())));
-        }
-        if (transfer != null && transfer.kind() == kind) {
-            final java.util.Set<ResourceKey> transferred = new java.util.HashSet<>();
-            for (final List<com.refinedmods.refinedstorage.api.resource.ResourceAmount> out : transfer.outputs()) {
-                if (!out.isEmpty()) {
-                    transferred.add(out.getFirst().resource());
-                }
-            }
-            if (!made.isEmpty() && transferred.containsAll(made) && made.containsAll(transferred)) {
-                return new com.wraithhawit.rsapg.tree.RecipeRequest(kind, transfer.label(), List.of(), List.of(),
-                    transfer.workstations(), transfer.recipeId());
-            }
+        if (processing != null && transfer != null && transfer.kind() == kind
+            && com.wraithhawit.rsapg.tree.ProcessingTransferMatch.matches(
+                processing.ingredients().stream().flatMap(Optional::stream).map(i -> i.input()).toList(), transfer.inputs(),
+                AdvancedGridLogic::isGtCircuit)
+            && com.wraithhawit.rsapg.tree.ProcessingTransferMatch.matches(
+                processing.outputs().stream().flatMap(Optional::stream).toList(), transfer.outputs())) {
+            return new com.wraithhawit.rsapg.tree.RecipeRequest(kind, transfer.label(), List.of(), List.of(),
+                transfer.workstations(), transfer.recipeId());
         }
         return new com.wraithhawit.rsapg.tree.RecipeRequest(kind, "", List.of(), List.of(), List.of(), null);
+    }
+
+    private static final net.minecraft.resources.ResourceLocation GT_CIRCUIT =
+        net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("gtceu", "programmed_circuit");
+
+    /** GregTech's programmed circuit: EMI sends it as an input, gttweaks keeps it off the pattern's inputs. */
+    private static boolean isGtCircuit(final ResourceKey key) {
+        return key instanceof ItemResource item
+            && GT_CIRCUIT.equals(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item.item()));
     }
 
     private static void tell(@Nullable final net.minecraft.server.level.ServerPlayer player, final Component message) {
@@ -253,7 +268,7 @@ public final class AdvancedGridLogic {
 
     private static void finish(final PatternGridBlockEntity grid, final GridStatus status, final String what,
                                final PatternType type) {
-        host(grid).rsapg$state().pendingType = null;
+        host(grid).rsapg$state().cancelPending();
         setEncodeStatus(grid, status);
         final ItemStack result = acc(grid).rsapg$getPatternOutput().getItem(0);
         RSAPG.LOG.info("{}: encoded {} pattern for {}: {} -> {}", where(grid), type.name().toLowerCase(),
@@ -264,7 +279,7 @@ public final class AdvancedGridLogic {
                                 final AdvancedGridState state, final boolean wantFluid, final Actor actor,
                                 final PatternType type) {
         if (!hasUpgrade(grid)) {
-            state.pendingType = null;
+            state.cancelPending();
             setEncodeStatus(grid, GridStatus.NO_BLANKS);
             return;
         }
@@ -273,7 +288,7 @@ public final class AdvancedGridLogic {
         final boolean craftFluid = wantFluid && fluid != null && !autocrafting.getPatternsByOutput(fluid).isEmpty();
         final ItemResource target = craftFluid ? fluid : plainBlank();
         if (autocrafting.getPatternsByOutput(target).isEmpty()) {
-            state.pendingType = null;
+            state.cancelPending();
             setEncodeStatus(grid, GridStatus.NO_BLANK_PATTERN);
             return;
         }
@@ -281,11 +296,12 @@ public final class AdvancedGridLogic {
         RSAPG.LOG.info("{}: no blank for a {} pattern, asked for 1 {}: {}", where(grid), kind(wantFluid),
             craftFluid ? "fluid blank" : "blank", result);
         if (result == EnsureResult.MISSING_RESOURCES) {
-            state.pendingType = null;
+            state.cancelPending();
             setEncodeStatus(grid, GridStatus.MISSING_RESOURCES);
             return;
         }
         state.pendingType = type;
+        state.pendingRecipe = draft(grid, type).copy();
         state.pendingFluid = craftFluid;
         state.nextPendingEnsureTick = state.ticks + PENDING_ENSURE_TICKS;
         setEncodeStatus(grid, GridStatus.CRAFTING_BLANK);
@@ -435,9 +451,9 @@ public final class AdvancedGridLogic {
                                     final StorageNetworkComponent storage, final AdvancedGridState state,
                                     final Actor actor) {
         final PatternType type = acc(grid).rsapg$getPatternType();
-        if (type != state.pendingType || draft(grid, type) == null || !hasUpgrade(grid)) {
+        if (type != state.pendingType || !samePendingRecipe(state, draft(grid, type)) || !hasUpgrade(grid)) {
             RSAPG.LOG.info("{}: dropped the waiting encode (recipe, pattern type or upgrade changed)", where(grid));
-            state.pendingType = null;
+            state.cancelPending();
             if (state.encodeStatus == GridStatus.CRAFTING_BLANK) {
                 setEncodeStatus(grid, GridStatus.NONE);
             }
@@ -454,6 +470,10 @@ public final class AdvancedGridLogic {
                 && Rfs.qualifies(draft, level);
             noBlank(grid, network, state, wantFluid, actor, type);
         }
+    }
+
+    static boolean samePendingRecipe(final AdvancedGridState state, @Nullable final ItemStack current) {
+        return current != null && !state.pendingRecipe.isEmpty() && ItemStack.matches(state.pendingRecipe, current);
     }
 
     private static boolean blankArrived(final StorageNetworkComponent storage, final boolean fluid,

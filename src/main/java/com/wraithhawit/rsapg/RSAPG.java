@@ -41,6 +41,7 @@ public final class RSAPG {
         modBus.addListener(ModNetwork::register);
         modBus.addListener((FMLCommonSetupEvent event) -> event.enqueueWork(RSAPG::registerUpgrades));
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> SelfTest.register(event.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> RecipeDiagnostics.register(event.getDispatcher()));
     }
 
     public static ResourceLocation id(final String path) {
