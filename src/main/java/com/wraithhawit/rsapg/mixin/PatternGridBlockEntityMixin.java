@@ -32,6 +32,8 @@ public abstract class PatternGridBlockEntityMixin implements AdvancedGridHost {
     /** 0.1.0 test builds kept one upgrade under this key. */
     @Unique
     private static final String RSAPG$TAG_OLD_UPGRADE = "rsapg_upgrade";
+    @Unique
+    private static final String RSAPG$TAG_AUTO_PLACE = "rsapg_auto_place";
 
     @Unique
     private UpgradeContainer rsapg$upgrades;
@@ -65,10 +67,14 @@ public abstract class PatternGridBlockEntityMixin implements AdvancedGridHost {
         if (!rsapg$upgrades.isEmpty()) {
             tag.put(RSAPG$TAG_UPGRADES, ContainerUtil.write(rsapg$upgrades, provider));
         }
+        if (rsapg$state.autoPlace) {
+            tag.putBoolean(RSAPG$TAG_AUTO_PLACE, true);
+        }
     }
 
     @Inject(method = "loadAdditional", at = @At("TAIL"))
     private void rsapg$load(final CompoundTag tag, final HolderLookup.Provider provider, final CallbackInfo ci) {
+        rsapg$state.autoPlace = tag.getBoolean(RSAPG$TAG_AUTO_PLACE);
         rsapg$upgrades.clearContent();
         if (tag.contains(RSAPG$TAG_UPGRADES)) {
             ContainerUtil.read(tag.getCompound(RSAPG$TAG_UPGRADES), rsapg$upgrades, provider);

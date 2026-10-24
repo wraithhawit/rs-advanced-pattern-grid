@@ -18,7 +18,14 @@ EMI/JEI transfer and other addons keep working) with these differences:
   crafting, stonecutter and smithing patterns into an
   [rsmbac](https://github.com/wraithhawit/rsmc) structure first, then autocrafters that feed no
   machine; processing patterns into an autocrafter facing a machine EMI lists for that recipe type.
-  A preview comes first; the grid's own recipe is put back afterwards.
+  A preview comes first; the grid's own recipe is put back afterwards. Among machines that fit, the
+  lowest tier that can run the recipe wins, and a pattern-holding block (such as gttweaks' RS Pattern
+  Buffer) wins a tie over an autocrafter. Other mods describe their machines through
+  `com.wraithhawit.rsapg.api.TreeDumpApi`; gttweaks does this for GregTech (tiers, multiblocks fed
+  through an input bus, RS Pattern Buffers).
+- **"Place created patterns" side button:** with it on, the normal create button puts the new pattern
+  where the dump would (processing patterns need the recipe to have come in through EMI's "+" so the
+  grid knows the machine); otherwise it goes into network storage. The action bar says where.
 
 Works with Refined Storage's autocrafter and Cable Tiers' tiered autocrafters. GregTech programmed
 circuits on patterns are handled by gttweaks, not here.

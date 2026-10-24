@@ -22,6 +22,11 @@ public final class Rsmbac {
         return LOADED ? RsmbacImpl.freeSlots(level, pos) : 0;
     }
 
+    /** Removes every pattern matching the test from the structure; returns how many (tests only). */
+    public static int removeIf(final Level level, final BlockPos pos, final java.util.function.Predicate<ItemStack> test) {
+        return LOADED ? RsmbacImpl.removeIf(level, pos, test) : 0;
+    }
+
     /** Puts a pattern into the structure's first free Pattern Storage slot; false if none takes it. */
     public static boolean place(final Level level, final BlockPos pos, final ItemStack pattern) {
         return LOADED && RsmbacImpl.place(level, pos, pattern);

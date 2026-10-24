@@ -26,5 +26,15 @@
   "gui.rsapg.tree.encode": "Encode %s",
   "gui.rsapg.tree.encoding": "Encoding...",
   "gui.rsapg.tree.placed": "In %s",
-  "gui.rsapg.tree.summary.done": "%s encoded and placed, %s failed, %s already on the network, %s with no place to go"
+  "gui.rsapg.tree.summary.done": "%s encoded and placed, %s failed, %s already on the network, %s with no place to go",
+  "gui.rsapg.auto_place": "Place created patterns",
+  "gui.rsapg.auto_place.on": "Into an autocrafter",
+  "gui.rsapg.auto_place.off": "Into the output slot",
+  "gui.rsapg.auto_place.on.help": "Each new pattern goes where the recipe-tree dump would put it: crafting patterns into rsmbac or a free autocrafter; processing patterns into the right machine's autocrafter when the recipe came in through EMI's +. Otherwise into network storage.",
+  "gui.rsapg.auto_place.off.help": "New patterns stay in the output slot, as on a normal Pattern Grid.",
+  "gui.rsapg.auto_place.placed": "Pattern placed in %s",
+  "gui.rsapg.auto_place.stored": "Pattern put in network storage: %s",
+  "gui.rsapg.auto_place.kept": "Pattern left in the output slot: %s, and the network wouldn't take it",
+  "gui.rsapg.auto_place.unknown_machine": "no machine known for it (load the recipe with EMI's +)",
+  "gui.rsapg.auto_place.no_target": "no fitting autocrafter with a free slot"
 }

@@ -6,6 +6,7 @@ import com.refinedmods.refinedstorage.api.network.node.GraphNetworkComponent;
 import com.refinedmods.refinedstorage.api.network.node.container.NetworkNodeContainer;
 import com.refinedmods.refinedstorage.common.api.support.network.InWorldNetworkNodeContainer;
 import com.wraithhawit.rsapg.RSAPG;
+import com.wraithhawit.rsapg.api.TreeDumpApi;
 import com.wraithhawit.rsapg.compat.Rsmbac;
 
 import java.lang.reflect.Method;
@@ -55,18 +56,24 @@ public final class PatternTargets {
         public final Kind kind;
         public final ServerLevel level;
         public final BlockPos pos;
-        /** Item id of the machine fed (MACHINE only). */
+        /** Item ids the fed machine answers to, matched against EMI workstations (MACHINE only). */
+        public final List<ResourceLocation> machines;
+        /** The fed machine's tier, or -1 if unknown (see {@link TreeDumpApi}). */
+        public final int tier;
+        /** A block holding patterns itself (e.g. an RS Pattern Buffer); null for autocrafters and rsmbac. */
         @Nullable
-        public final ResourceLocation machine;
+        public final TreeDumpApi.PatternHolder holder;
         public final String name;
         public int free;
 
-        Target(final Kind kind, final ServerLevel level, final BlockPos pos, @Nullable final ResourceLocation machine,
-               final String name, final int free) {
+        Target(final Kind kind, final ServerLevel level, final BlockPos pos, final List<ResourceLocation> machines,
+               final int tier, @Nullable final TreeDumpApi.PatternHolder holder, final String name, final int free) {
             this.kind = kind;
             this.level = level;
             this.pos = pos;
-            this.machine = machine;
+            this.machines = machines;
+            this.tier = tier;
+            this.holder = holder;
             this.name = name;
             this.free = free;
         }
@@ -74,6 +81,12 @@ public final class PatternTargets {
         /** Coordinates and dimension, for the preview's hover tooltip. */
         public String location() {
             return pos.getX() + " " + pos.getY() + " " + pos.getZ() + " in " + level.dimension().location();
+        }
+
+        @Override
+        public String toString() {
+            return kind + ":" + free + (machines.isEmpty() ? "" : ":" + machines) + (tier >= 0 ? ":T" + tier : "")
+                + (holder != null ? ":holder" : "");
         }
     }
 
@@ -112,10 +125,15 @@ public final class PatternTargets {
 
     @Nullable
     private static Target describe(final ServerLevel level, final BlockEntity be) throws ReflectiveOperationException {
+        final TreeDumpApi.PatternHolder holder = TreeDumpApi.holder(level, be);
+        if (holder != null) {
+            return new Target(Kind.MACHINE, level, be.getBlockPos(), holder.machine().ids(), holder.machine().tier(),
+                holder, holder.name().strip(), holder.freeSlots());
+        }
         if (Rsmbac.isController(be)) {
             final String name = be instanceof Nameable nameable ? nameable.getDisplayName().getString()
                 : be.getBlockState().getBlock().getName().getString();
-            return new Target(Kind.RSMBAC, level, be.getBlockPos(), null, name.strip(),
+            return new Target(Kind.RSMBAC, level, be.getBlockPos(), List.of(), -1, null, name.strip(),
                 Rsmbac.freeSlots(level, be.getBlockPos()));
         }
         final Method patterns = method(be.getClass(), "getPatternContainer");
@@ -137,10 +155,18 @@ public final class PatternTargets {
             : Component.translatable(be.getBlockState().getBlock().getDescriptionId()).getString();
         final String name = rawName.strip();
         if (machine == null || isAutocrafter(machine)) {
-            return new Target(Kind.FREE, level, be.getBlockPos(), null, name, free);
+            return new Target(Kind.FREE, level, be.getBlockPos(), List.of(), -1, null, name, free);
+        }
+        final TreeDumpApi.MachineInfo info = TreeDumpApi.machine(level, machine);
+        if (info != null) {
+            return new Target(Kind.MACHINE, level, be.getBlockPos(), info.ids(), info.tier(), null, name, free);
         }
         final ResourceLocation machineId = BuiltInRegistries.ITEM.getKey(machine.getBlockState().getBlock().asItem());
-        return new Target(Kind.MACHINE, level, be.getBlockPos(), machineId, name, free);
+        return new Target(Kind.MACHINE, level, be.getBlockPos(), List.of(machineId), -1, null, name, free);
+    }
+
+    private static boolean isAutocrafter(final BlockEntity be) {
+        return method(be.getClass(), "getChainingRoot") != null;
     }
 
     /**
@@ -155,6 +181,9 @@ public final class PatternTargets {
         final BlockEntity be = target.level.getBlockEntity(target.pos);
         if (be == null) {
             return false;
+        }
+        if (target.holder != null) {
+            return target.holder.place(pattern);
         }
         if (target.kind == Kind.RSMBAC) {
             return Rsmbac.place(target.level, target.pos, pattern);
@@ -177,10 +206,6 @@ public final class PatternTargets {
                 target.pos.toShortString(), e.toString());
         }
         return false;
-    }
-
-    private static boolean isAutocrafter(final BlockEntity be) {
-        return method(be.getClass(), "getChainingRoot") != null;
     }
 
     private static final Map<String, Method> METHODS = new ConcurrentHashMap<>();

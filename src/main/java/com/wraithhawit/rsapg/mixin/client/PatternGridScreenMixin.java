@@ -10,6 +10,8 @@ import com.wraithhawit.rsapg.GridStatus;
 import com.wraithhawit.rsapg.GridUpgradeDestination;
 import com.wraithhawit.rsapg.RSAPG;
 import com.wraithhawit.rsapg.compat.Rfs;
+import com.wraithhawit.rsapg.client.AutoPlaceSideButtonWidget;
+import com.wraithhawit.rsapg.menu.AdvancedGridProperties;
 import com.wraithhawit.rsapg.menu.AdvancedMenu;
 import com.wraithhawit.rsapg.menu.AdvancedUpgradeSlot;
 import com.wraithhawit.rsapg.menu.SwitchableSlot;
@@ -73,6 +75,25 @@ public abstract class PatternGridScreenMixin extends AbstractContainerScreen<Pat
     protected PatternGridScreenMixin(final PatternGridContainerMenu menu, final Inventory inventory,
                                      final Component title) {
         super(menu, inventory, title);
+    }
+
+    @Unique
+    @Nullable
+    private AutoPlaceSideButtonWidget rsapg$autoPlaceButton;
+
+    /** Always added (the menu may not know it is advanced yet); shown only on an advanced grid. */
+    @Inject(method = "init", at = @At("TAIL"))
+    private void rsapg$addAutoPlaceButton(final CallbackInfo ci) {
+        rsapg$autoPlaceButton = new AutoPlaceSideButtonWidget(menu.getProperty(AdvancedGridProperties.AUTO_PLACE));
+        ((AbstractBaseScreen<?>) (Object) this).addSideButton(rsapg$autoPlaceButton);
+        rsapg$autoPlaceButton.visible = rsapg$advanced();
+    }
+
+    @Inject(method = "containerTick", at = @At("TAIL"))
+    private void rsapg$showAutoPlaceButton(final CallbackInfo ci) {
+        if (rsapg$autoPlaceButton != null) {
+            rsapg$autoPlaceButton.visible = rsapg$advanced();
+        }
     }
 
     @Unique

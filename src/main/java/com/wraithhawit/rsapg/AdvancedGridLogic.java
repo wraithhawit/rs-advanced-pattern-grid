@@ -27,6 +27,7 @@ import java.util.Optional;
 import javax.annotation.Nullable;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
@@ -156,6 +157,88 @@ public final class AdvancedGridLogic {
         finish(grid, fallback ? GridStatus.PLAIN_FALLBACK : GridStatus.NONE, "used a " + source, type);
         // Craft ahead: top the spares back up soon instead of waiting for the next check.
         state.nextSpareTick = Math.min(state.nextSpareTick, state.ticks + 1);
+    }
+
+    /**
+     * The create button: encode, then, with the auto-place toggle on, put the pattern where the
+     * recipe-tree dump would (rsmbac / free autocrafters for internal patterns; for processing, the
+     * machine of the recipe EMI's "+" last transferred, if the pattern still makes those outputs),
+     * else into network storage. The player is told where it went on the action bar.
+     */
+    public static void encodeAndPlace(final PatternGridBlockEntity grid, final String requester) {
+        encode(grid, requester);
+        final AdvancedGridState state = host(grid).rsapg$state();
+        final FilteredContainer output = acc(grid).rsapg$getPatternOutput();
+        final ItemStack pattern = output.getItem(0);
+        if (!state.autoPlace || pattern.isEmpty() || !(grid.getLevel() instanceof net.minecraft.server.level.ServerLevel level)) {
+            return;
+        }
+        final net.minecraft.server.level.ServerPlayer player = level.getServer().getPlayerList().getPlayerByName(requester);
+        final com.wraithhawit.rsapg.tree.RecipeRequest request = describe(pattern, state.lastTransfer);
+        final com.wraithhawit.rsapg.tree.PatternTargets.Target target =
+            request == null ? null : com.wraithhawit.rsapg.tree.TreePlanner.chooseFor(level, grid, request);
+        if (target != null && com.wraithhawit.rsapg.tree.PatternTargets.place(target, pattern.copy())) {
+            output.setItem(0, ItemStack.EMPTY);
+            tell(player, Component.translatable("gui.rsapg.auto_place.placed", target.name));
+            RSAPG.LOG.info("{}: auto-placed {} in {} at {}", where(grid), describe(pattern), target.name, target.location());
+            return;
+        }
+        final String why = request != null && !request.kind().internal() && request.workstations().isEmpty()
+            ? "gui.rsapg.auto_place.unknown_machine" : "gui.rsapg.auto_place.no_target";
+        final Network network = grid.getNetworkForItem();
+        if (network != null && insert(network.getComponent(StorageNetworkComponent.class), pattern, new GridActor(requester))
+            == pattern.getCount()) {
+            output.setItem(0, ItemStack.EMPTY);
+            tell(player, Component.translatable("gui.rsapg.auto_place.stored", Component.translatable(why)));
+            RSAPG.LOG.info("{}: auto-place found no target ({}); {} went into network storage", where(grid), why, describe(pattern));
+        } else {
+            tell(player, Component.translatable("gui.rsapg.auto_place.kept", Component.translatable(why)));
+        }
+    }
+
+    /** The encoded pattern as a one-recipe request, borrowing the machine from the last EMI transfer if it matches. */
+    @Nullable
+    private static com.wraithhawit.rsapg.tree.RecipeRequest describe(final ItemStack pattern,
+                                                                     @Nullable final com.wraithhawit.rsapg.tree.RecipeRequest transfer) {
+        final com.refinedmods.refinedstorage.common.autocrafting.PatternState state =
+            pattern.get(DataComponents.INSTANCE.getPatternState());
+        if (state == null) {
+            return null;
+        }
+        final com.wraithhawit.rsapg.tree.RecipeRequest.Kind kind = switch (state.type()) {
+            case CRAFTING -> com.wraithhawit.rsapg.tree.RecipeRequest.Kind.CRAFTING;
+            case PROCESSING -> com.wraithhawit.rsapg.tree.RecipeRequest.Kind.PROCESSING;
+            case STONECUTTER -> com.wraithhawit.rsapg.tree.RecipeRequest.Kind.STONECUTTER;
+            case SMITHING_TABLE -> com.wraithhawit.rsapg.tree.RecipeRequest.Kind.SMITHING;
+        };
+        if (kind.internal()) {
+            return new com.wraithhawit.rsapg.tree.RecipeRequest(kind, "", List.of(), List.of(), List.of(), null);
+        }
+        final com.refinedmods.refinedstorage.common.autocrafting.ProcessingPatternState processing =
+            pattern.get(DataComponents.INSTANCE.getProcessingPatternState());
+        final java.util.Set<ResourceKey> made = new java.util.HashSet<>();
+        if (processing != null) {
+            processing.outputs().forEach(o -> o.ifPresent(amount -> made.add(amount.resource())));
+        }
+        if (transfer != null && transfer.kind() == kind) {
+            final java.util.Set<ResourceKey> transferred = new java.util.HashSet<>();
+            for (final List<com.refinedmods.refinedstorage.api.resource.ResourceAmount> out : transfer.outputs()) {
+                if (!out.isEmpty()) {
+                    transferred.add(out.getFirst().resource());
+                }
+            }
+            if (!made.isEmpty() && transferred.containsAll(made) && made.containsAll(transferred)) {
+                return new com.wraithhawit.rsapg.tree.RecipeRequest(kind, transfer.label(), List.of(), List.of(),
+                    transfer.workstations(), transfer.recipeId());
+            }
+        }
+        return new com.wraithhawit.rsapg.tree.RecipeRequest(kind, "", List.of(), List.of(), List.of(), null);
+    }
+
+    private static void tell(@Nullable final net.minecraft.server.level.ServerPlayer player, final Component message) {
+        if (player != null) {
+            player.displayClientMessage(message, true);
+        }
     }
 
     private static void runRs(final PatternGridBlockEntity grid, final Level level,
@@ -361,7 +444,7 @@ public final class AdvancedGridLogic {
             return;
         }
         if (blankArrived(storage, state.pendingFluid, actor)) {
-            encode(grid, state.requester);
+            encodeAndPlace(grid, state.requester);
             return;
         }
         if (state.ticks >= state.nextPendingEnsureTick) {

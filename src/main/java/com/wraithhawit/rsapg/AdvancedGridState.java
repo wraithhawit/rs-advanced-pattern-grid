@@ -18,6 +18,15 @@ public final class AdvancedGridState {
     boolean pendingFluid;
     String requester = "Advanced Pattern Grid";
 
+    /** Side-button toggle: the create button places the new pattern like the recipe-tree dump. Saved. */
+    public boolean autoPlace;
+    /**
+     * The last recipe EMI's "+" transferred into this grid, so a processing pattern encoded from it
+     * knows its machine. Not saved.
+     */
+    @javax.annotation.Nullable
+    public com.wraithhawit.rsapg.tree.RecipeRequest lastTransfer;
+
     long ticks;
     long nextPendingEnsureTick;
     long nextSpareTick;

@@ -9,7 +9,10 @@ import com.refinedmods.refinedstorage.common.grid.AbstractGridContainerMenu;
 import com.refinedmods.refinedstorage.common.grid.GridData;
 import com.wraithhawit.rsapg.AdvancedGridHost;
 import com.wraithhawit.rsapg.AdvancedGridLogic;
+import com.wraithhawit.rsapg.menu.AdvancedGridProperties;
 import com.wraithhawit.rsapg.menu.AdvancedMenu;
+import com.refinedmods.refinedstorage.common.support.containermenu.ClientProperty;
+import com.refinedmods.refinedstorage.common.support.containermenu.ServerProperty;
 import com.wraithhawit.rsapg.menu.SwitchableSlot;
 import com.wraithhawit.rsapg.GridUpgradeDestination;
 import com.wraithhawit.rsapg.menu.AdvancedUpgradeSlot;
@@ -109,6 +112,7 @@ public abstract class PatternGridContainerMenuMixin extends AbstractGridContaine
         rsapg$sync = addDataSlot(DataSlot.standalone());
         rsapg$plainBlanks = addDataSlot(DataSlot.standalone());
         rsapg$fluidBlanks = addDataSlot(DataSlot.standalone());
+        registerProperty(new ClientProperty<>(AdvancedGridProperties.AUTO_PLACE, false));
     }
 
     @Inject(
@@ -120,6 +124,15 @@ public abstract class PatternGridContainerMenuMixin extends AbstractGridContaine
         rsapg$sync = addDataSlot(rsapg$serverSlot(this::rsapg$syncValue));
         rsapg$plainBlanks = addDataSlot(rsapg$serverSlot(() -> rsapg$serverBlankCount(false)));
         rsapg$fluidBlanks = addDataSlot(rsapg$serverSlot(() -> rsapg$serverBlankCount(true)));
+        final PatternGridBlockEntity grid = patternGrid;
+        registerProperty(new ServerProperty<>(AdvancedGridProperties.AUTO_PLACE,
+            () -> grid != null && ((AdvancedGridHost) grid).rsapg$state().autoPlace,
+            value -> {
+                if (grid != null) {
+                    ((AdvancedGridHost) grid).rsapg$state().autoPlace = value;
+                    grid.setChanged();
+                }
+            }));
     }
 
     @Unique
@@ -182,7 +195,7 @@ public abstract class PatternGridContainerMenuMixin extends AbstractGridContaine
     @Inject(method = "createPattern", at = @At("HEAD"), cancellable = true)
     private void rsapg$createPattern(final CallbackInfo ci) {
         if (patternGrid != null && ((AdvancedGridHost) patternGrid).rsapg$isAdvanced()) {
-            AdvancedGridLogic.encode(patternGrid, playerInventory.player.getGameProfile().getName());
+            AdvancedGridLogic.encodeAndPlace(patternGrid, playerInventory.player.getGameProfile().getName());
             ci.cancel();
         }
     }

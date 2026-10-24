@@ -81,10 +81,13 @@ final class SelfTest {
                             Phase.PLAN, null)))
                     .then(Commands.literal("encode")
                         .executes(ctx -> run(ctx.getSource(), BlockPosArgument.getLoadedBlockPos(ctx, "pos"),
-                            Phase.ENCODE, null))))));
+                            Phase.ENCODE, null)))
+                    .then(Commands.literal("autoplace")
+                        .executes(ctx -> run(ctx.getSource(), BlockPosArgument.getLoadedBlockPos(ctx, "pos"),
+                            Phase.AUTOPLACE, null))))));
     }
 
-    private enum Phase { MAIN, AUTOCRAFT_START, AUTOCRAFT_CHECK, SPARE_CHECK, PLAN, ENCODE }
+    private enum Phase { MAIN, AUTOCRAFT_START, AUTOCRAFT_CHECK, SPARE_CHECK, PLAN, ENCODE, AUTOPLACE }
 
     private static int run(final CommandSourceStack source, final BlockPos pos, final Phase phase,
                            @Nullable final BlockPos autocrafterPos) {
@@ -108,6 +111,7 @@ final class SelfTest {
                 case SPARE_CHECK -> test.spareCheck();
                 case PLAN -> test.plan();
                 case ENCODE -> test.encodeTree();
+                case AUTOPLACE -> test.autoPlace();
             }
         } catch (final RuntimeException e) {
             RSAPG.LOG.error("selftest: aborted", e);
@@ -316,17 +320,17 @@ final class SelfTest {
         final ResourceLocation bender = ResourceLocation.parse("gtceu:lv_bender");
         final List<com.wraithhawit.rsapg.tree.RecipeRequest> requests = List.of(
             new com.wraithhawit.rsapg.tree.RecipeRequest(com.wraithhawit.rsapg.tree.RecipeRequest.Kind.CRAFTING,
-                "Crafting", crafting, List.of(List.of(bricks)), List.of()),
+                "Crafting", crafting, List.of(List.of(bricks)), List.of(), null),
             new com.wraithhawit.rsapg.tree.RecipeRequest(com.wraithhawit.rsapg.tree.RecipeRequest.Kind.PROCESSING,
                 "Wiremill", List.of(List.of(itemAmount("minecraft:copper_ingot", 1))),
-                List.of(List.of(itemAmount("gtceu:copper_single_wire", 2))), List.of(wiremill)),
+                List.of(List.of(itemAmount("gtceu:copper_single_wire", 2))), List.of(wiremill), null),
             new com.wraithhawit.rsapg.tree.RecipeRequest(com.wraithhawit.rsapg.tree.RecipeRequest.Kind.PROCESSING,
                 "Bender", List.of(List.of(itemAmount("minecraft:iron_ingot", 1))),
-                List.of(List.of(itemAmount("gtceu:iron_plate", 1))), List.of(bender)),
+                List.of(List.of(itemAmount("gtceu:iron_plate", 1))), List.of(bender), null),
             new com.wraithhawit.rsapg.tree.RecipeRequest(com.wraithhawit.rsapg.tree.RecipeRequest.Kind.CRAFTING,
-                "Crafting", crafting, List.of(List.of(bricks)), List.of()),
+                "Crafting", crafting, List.of(List.of(bricks)), List.of(), null),
             new com.wraithhawit.rsapg.tree.RecipeRequest(com.wraithhawit.rsapg.tree.RecipeRequest.Kind.CRAFTING,
-                "Crafting", crafting, List.of(List.of(new ResourceAmount(plain(), 1))), List.of())
+                "Crafting", crafting, List.of(List.of(new ResourceAmount(plain(), 1))), List.of(), null)
         );
         final var plan = com.wraithhawit.rsapg.tree.TreePlanner.plan(level, grid, requests);
         for (final var a : plan) {
@@ -336,7 +340,7 @@ final class SelfTest {
             plan.get(0).target() != null && plan.get(0).target().kind == com.wraithhawit.rsapg.tree.PatternTargets.Kind.FREE,
             plan.get(0).line().toString());
         check("plan: copper wire to the wiremill's autocrafter",
-            plan.get(1).target() != null && wiremill.equals(plan.get(1).target().machine), plan.get(1).line().toString());
+            plan.get(1).target() != null && plan.get(1).target().machines.contains(wiremill), plan.get(1).line().toString());
         check("plan: bender recipe has nowhere to go",
             plan.get(2).line().status() == com.wraithhawit.rsapg.tree.PlanLine.Status.NO_TARGET, plan.get(2).line().toString());
         check("plan: repeated stone bricks flagged",
@@ -372,10 +376,10 @@ final class SelfTest {
         final ResourceLocation wiremill = ResourceLocation.parse("gtceu:lv_wiremill");
         final List<com.wraithhawit.rsapg.tree.RecipeRequest> requests = List.of(
             new com.wraithhawit.rsapg.tree.RecipeRequest(com.wraithhawit.rsapg.tree.RecipeRequest.Kind.CRAFTING,
-                "Crafting", andesite, List.of(List.of(itemAmount("minecraft:polished_andesite", 4))), List.of()),
+                "Crafting", andesite, List.of(List.of(itemAmount("minecraft:polished_andesite", 4))), List.of(), null),
             new com.wraithhawit.rsapg.tree.RecipeRequest(com.wraithhawit.rsapg.tree.RecipeRequest.Kind.PROCESSING,
                 "Wiremill", List.of(new ArrayList<>(List.of(itemAmount("gtceu:tin_ingot", 1)))),
-                List.of(new ArrayList<>(List.of(itemAmount("gtceu:tin_single_wire", 2)))), List.of(wiremill))
+                List.of(new ArrayList<>(List.of(itemAmount("gtceu:tin_single_wire", 2)))), List.of(wiremill), null)
         );
         final List<com.wraithhawit.rsapg.tree.PlanLine> results =
             com.wraithhawit.rsapg.tree.TreeEncoder.encode(player, grid, requests);
@@ -399,6 +403,79 @@ final class SelfTest {
                 && restoredState.input().equals(ownState.input()), String.valueOf(restoredState));
         final int removed = removeTestPatterns(List.of("minecraft:polished_andesite", "gtceu:tin_single_wire"));
         check("encode: found and removed both test patterns in autocrafters", removed == 2, "removed " + removed);
+    }
+
+    /**
+     * The create button with the auto-place toggle: a crafting pattern goes to rsmbac (or a free
+     * autocrafter), a wiremill pattern with a matching EMI transfer note to a wiremill's autocrafter,
+     * the same without a note into network storage; with the toggle off it stays put. Run on the big
+     * rig's grid. Cleans up its patterns.
+     */
+    private void autoPlace() {
+        reset();
+        final AdvancedGridState state = ((AdvancedGridHost) grid).rsapg$state();
+        give(plain(), 4);
+        state.autoPlace = true;
+        acc().rsapg$setPatternType(PatternType.CRAFTING);
+        placeRecipe(recipe("minecraft:polished_andesite"));
+        AdvancedGridLogic.encodeAndPlace(grid, "selftest");
+        check("auto-place crafting: output slot empty (placed)", output().isEmpty(), describe(output()));
+        final int andesite = removeEverywhere("minecraft:polished_andesite");
+        check("auto-place crafting: found in a target and removed", andesite == 1, "removed " + andesite);
+
+        final ResourceAmount tin = itemAmount("gtceu:tin_ingot", 1);
+        final ResourceAmount wire = itemAmount("gtceu:tin_single_wire", 2);
+        final net.minecraft.server.level.ServerPlayer player =
+            net.neoforged.neoforge.common.util.FakePlayerFactory.getMinecraft(level);
+        final List<ResourceLocation> wiremills = List.of(ResourceLocation.parse("gtceu:lv_wiremill"),
+            ResourceLocation.parse("gtceu:uv_wiremill"));
+        state.lastTransfer = new com.wraithhawit.rsapg.tree.RecipeRequest(
+            com.wraithhawit.rsapg.tree.RecipeRequest.Kind.PROCESSING, "Wiremill", List.of(List.of(tin)),
+            List.of(List.of(wire)), wiremills, null);
+        acc().rsapg$transferProcessingRecipe(player, new ArrayList<>(List.of(new ArrayList<>(List.of(tin)))),
+            new ArrayList<>(List.of(new ArrayList<>(List.of(wire)))));
+        AdvancedGridLogic.encodeAndPlace(grid, "selftest");
+        check("auto-place processing with note: output slot empty", output().isEmpty(), describe(output()));
+        final int wired = removeEverywhere("gtceu:tin_single_wire");
+        check("auto-place processing with note: found in a wiremill autocrafter", wired == 1, "removed " + wired);
+
+        state.lastTransfer = null;
+        AdvancedGridLogic.encodeAndPlace(grid, "selftest");
+        check("auto-place without note: output slot empty", output().isEmpty(), describe(output()));
+        final int stored = drainEncodedPatterns();
+        check("auto-place without note: the pattern went into network storage", stored >= 1,
+            "encoded patterns drained from storage: " + stored);
+
+        state.autoPlace = false;
+        AdvancedGridLogic.encodeAndPlace(grid, "selftest");
+        check("toggle off: pattern stays in the output slot", !output().isEmpty(), describe(output()));
+        clearOutput();
+    }
+
+    private int removeEverywhere(final String outputId) {
+        int removed = removeTestPatterns(List.of(outputId));
+        for (final var target : com.wraithhawit.rsapg.tree.PatternTargets.collect(level.getServer(), grid.getNetworkForItem())) {
+            if (target.kind == com.wraithhawit.rsapg.tree.PatternTargets.Kind.RSMBAC) {
+                removed += com.wraithhawit.rsapg.compat.Rsmbac.removeIf(target.level, target.pos, stack -> {
+                    final var out = Items.INSTANCE.getPattern().getOutput(stack, level);
+                    return out.isPresent() && net.minecraft.core.registries.BuiltInRegistries.ITEM
+                        .getKey(out.get().getItem()).toString().equals(outputId);
+                });
+            }
+        }
+        return removed;
+    }
+
+    /** Takes encoded (non-blank) patterns out of network storage; returns how many. */
+    private int drainEncodedPatterns() {
+        int drained = 0;
+        for (final var r : storage.getAll()) {
+            if (r.resource() instanceof ItemResource ir && ir.item() == Items.INSTANCE.getPattern()
+                && !ir.components().isEmpty()) {
+                drained += (int) storage.extract(r.resource(), r.amount(), Action.EXECUTE, ACTOR);
+            }
+        }
+        return drained;
     }
 
     /** Takes patterns making any of these items out of every pattern target on the network. */

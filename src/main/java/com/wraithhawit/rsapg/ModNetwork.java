@@ -30,9 +30,10 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public final class ModNetwork {
     /**
      * 2 = upgrade panel + blank counts (0.1.1+); 3 = recipe-tree plan (0.1.6); 4 = plan line location
-     * (0.1.7); 5 = recipe-tree encode (0.1.8+).
+     * (0.1.7); 5 = recipe-tree encode (0.1.8); 6 = request carries a recipe id (0.1.9); 7 = auto-place
+     * toggle property + EMI transfer context (0.1.11+).
      */
-    public static final String PROTOCOL = "5";
+    public static final String PROTOCOL = "7";
 
     private ModNetwork() {
     }
@@ -66,6 +67,21 @@ public final class ModNetwork {
         }
     }
 
+    /** Client → server: EMI's "+" just transferred this recipe into the grid open in {@code containerId}. */
+    public record TransferContext(int containerId, RecipeRequest recipe) implements CustomPacketPayload {
+        public static final Type<TransferContext> TYPE = new Type<>(RSAPG.id("transfer_context"));
+        static final StreamCodec<RegistryFriendlyByteBuf, TransferContext> CODEC = StreamCodec.composite(
+            ByteBufCodecs.VAR_INT, TransferContext::containerId,
+            RecipeRequest.STREAM_CODEC, TransferContext::recipe,
+            TransferContext::new
+        );
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
     /** Server → client: one line per requested recipe (or a single error); {@code done} after encoding. */
     public record TreePlan(List<PlanLine> lines, String error, boolean done) implements CustomPacketPayload {
         public static final Type<TreePlan> TYPE = new Type<>(RSAPG.id("tree_plan"));
@@ -88,6 +104,7 @@ public final class ModNetwork {
             .playToClient(LayoutCheck.TYPE, LayoutCheck.CODEC, (payload, context) -> {
             })
             .playToServer(PlanTree.TYPE, PlanTree.CODEC, ModNetwork::onPlanTree)
+            .playToServer(TransferContext.TYPE, TransferContext.CODEC, ModNetwork::onTransferContext)
             .playToClient(TreePlan.TYPE, TreePlan.CODEC, (payload, context) -> ClientHooks.onTreePlan(payload));
     }
 
@@ -99,6 +116,15 @@ public final class ModNetwork {
         }
         final PatternGridBlockEntity grid = menu.rsapg$grid();
         return grid != null && ((AdvancedGridHost) grid).rsapg$isAdvanced() ? grid : null;
+    }
+
+    private static void onTransferContext(final TransferContext payload, final IPayloadContext context) {
+        if (context.player() instanceof ServerPlayer player) {
+            final PatternGridBlockEntity grid = advancedGrid(player, payload.containerId());
+            if (grid != null) {
+                ((AdvancedGridHost) grid).rsapg$state().lastTransfer = payload.recipe();
+            }
+        }
     }
 
     private static void onPlanTree(final PlanTree payload, final IPayloadContext context) {

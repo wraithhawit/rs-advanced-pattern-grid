@@ -21,9 +21,12 @@ import net.minecraft.resources.ResourceLocation;
  *                     stonecutter: 1; smithing: template, base, addition; processing: any)
  * @param outputs      per output, the resources (crafting: the result; processing: outputs at 100%)
  * @param workstations item ids of the machines EMI says run this recipe's category (processing)
+ * @param recipeId     EMI's id for the recipe (usually the recipe's own id), or null; lets a
+ *                     {@link com.wraithhawit.rsapg.api.TreeDumpApi.RecipeTierResolver} find its tier
  */
 public record RecipeRequest(Kind kind, String label, List<List<ResourceAmount>> inputs,
-                            List<List<ResourceAmount>> outputs, List<ResourceLocation> workstations) {
+                            List<List<ResourceAmount>> outputs, List<ResourceLocation> workstations,
+                            @Nullable ResourceLocation recipeId) {
     public enum Kind {
         CRAFTING, PROCESSING, STONECUTTER, SMITHING;
 
@@ -76,13 +79,15 @@ public record RecipeRequest(Kind kind, String label, List<List<ResourceAmount>> 
             SLOTS.encode(buf, r.inputs());
             SLOTS.encode(buf, r.outputs());
             buf.writeCollection(r.workstations(), (b, id) -> b.writeResourceLocation(id));
+            buf.writeNullable(r.recipeId(), (b, id) -> b.writeResourceLocation(id));
         },
         buf -> new RecipeRequest(
             buf.readEnum(Kind.class),
             buf.readUtf(256),
             SLOTS.decode(buf),
             SLOTS.decode(buf),
-            buf.readList(b -> b.readResourceLocation())
+            buf.readList(b -> b.readResourceLocation()),
+            buf.readNullable(b -> b.readResourceLocation())
         )
     );
 }

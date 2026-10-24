@@ -18,6 +18,11 @@ off a pattern that fuzzy mode would not change.
 [[mixins]]
 config="${mod_id}.mixins.json"
 
+# EMI's "+" into an Advanced Pattern Grid also records the recipe's machines (auto-place).
+[[mixins]]
+config="${mod_id}.rsemi.mixins.json"
+requiredMods=["emi","refinedstorage_emi_integration"]
+
 # EMI's recipe tree screen gets the "encode missing patterns" button.
 [[mixins]]
 config="${mod_id}.emi.mixins.json"

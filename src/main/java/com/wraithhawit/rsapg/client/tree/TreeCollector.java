@@ -31,7 +31,7 @@ import net.neoforged.fml.ModList;
  * (chance 0) are left out except GregTech's programmed circuit when gttweaks will store it, and
  * outputs below 100% chance are left off (RS would wait for them forever).
  */
-final class TreeCollector {
+public final class TreeCollector {
     private static final ResourceLocation GT_CIRCUIT = ResourceLocation.fromNamespaceAndPath("gtceu", "programmed_circuit");
 
     private TreeCollector() {
@@ -62,7 +62,7 @@ final class TreeCollector {
         }
     }
 
-    private static RecipeRequest convert(final EmiRecipe recipe) {
+    public static RecipeRequest convert(final EmiRecipe recipe) {
         final EmiRecipeCategory category = recipe.getCategory();
         final String label = category.getName().getString();
         final List<ResourceLocation> workstations = new ArrayList<>();
@@ -76,15 +76,15 @@ final class TreeCollector {
         }
         if (category == VanillaEmiRecipeCategories.CRAFTING) {
             return new RecipeRequest(RecipeRequest.Kind.CRAFTING, label, items(recipe.getInputs()),
-                itemOutputs(recipe.getOutputs()), workstations);
+                itemOutputs(recipe.getOutputs()), workstations, recipe.getId());
         }
         if (category == VanillaEmiRecipeCategories.STONECUTTING) {
             return new RecipeRequest(RecipeRequest.Kind.STONECUTTER, label, items(recipe.getInputs()),
-                itemOutputs(recipe.getOutputs()), workstations);
+                itemOutputs(recipe.getOutputs()), workstations, recipe.getId());
         }
         if (category == VanillaEmiRecipeCategories.SMITHING) {
             return new RecipeRequest(RecipeRequest.Kind.SMITHING, label, items(recipe.getInputs()),
-                itemOutputs(recipe.getOutputs()), workstations);
+                itemOutputs(recipe.getOutputs()), workstations, recipe.getId());
         }
         final List<List<ResourceAmount>> inputs = new ArrayList<>();
         for (final EmiIngredient input : recipe.getInputs()) {
@@ -98,7 +98,7 @@ final class TreeCollector {
                 outputs.add(amounts(output));
             }
         }
-        return new RecipeRequest(RecipeRequest.Kind.PROCESSING, label, inputs, outputs, workstations);
+        return new RecipeRequest(RecipeRequest.Kind.PROCESSING, label, inputs, outputs, workstations, recipe.getId());
     }
 
     /** RS's crafting/stonecutter/smithing transfer: per slot, the item stacks of the ingredient. */

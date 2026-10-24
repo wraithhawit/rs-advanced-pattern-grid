@@ -42,4 +42,19 @@ final class RsmbacImpl {
         }
         return false;
     }
+
+    static int removeIf(final Level level, final BlockPos pos, final java.util.function.Predicate<ItemStack> test) {
+        final StructurePatterns patterns = StructurePatterns.of(level, pos);
+        int removed = 0;
+        for (int i = 0; i < patterns.getContainerSize(); ++i) {
+            if (!patterns.getItem(i).isEmpty() && test.test(patterns.getItem(i))) {
+                patterns.setItem(i, ItemStack.EMPTY);
+                removed++;
+            }
+        }
+        if (removed > 0) {
+            patterns.setChanged();
+        }
+        return removed;
+    }
 }
