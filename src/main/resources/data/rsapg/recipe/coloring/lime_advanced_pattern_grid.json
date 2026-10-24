@@ -1,0 +1,10 @@
+{
+  "type": "refinedstorage:recoloring",
+  "dye": {
+    "tag": "c:dyes/lime"
+  },
+  "ingredient": {
+    "tag": "rsapg:advanced_pattern_grids"
+  },
+  "result": "rsapg:lime_advanced_pattern_grid"
+}

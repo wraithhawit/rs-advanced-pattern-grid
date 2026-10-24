@@ -1,0 +1,74 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.gradle.userdev' version '7.1.38'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+repositories {
+    mavenCentral()
+}
+
+tasks.register('requireRefinedStorageJar') {
+    group = 'build setup'
+    description = 'Fails with something readable when libs/ has no Refined Storage.'
+    doLast {
+        if (fileTree(dir: 'libs', include: ['refinedstorage-neoforge-*.jar']).empty) {
+            throw new GradleException(
+                "No refinedstorage-neoforge-*.jar in libs/. Copy refinedstorage-neoforge-"
+                    + "${refinedstorage_version}.jar and refinedfluidsubstitution-neoforge-*.jar out of a "
+                    + "Minecraft instance's mods folder into ${projectDir}/libs/. See libs/README.md.")
+        }
+    }
+}
+
+tasks.named('compileJava') { dependsOn 'requireRefinedStorageJar' }
+
+runs {
+    configureEach {
+        systemProperty 'forge.logging.console.level', 'debug'
+        workingDirectory project.layout.projectDirectory.dir('run').dir(name)
+        modSource project.sourceSets.main
+    }
+    client {}
+    server {
+        argument '--nogui'
+    }
+}
+
+dependencies {
+    implementation "net.neoforged:neoforge:${neo_version}"
+    compileOnly fileTree(dir: 'libs', include: ['*.jar'])
+    testImplementation fileTree(dir: 'libs', include: ['*.jar'])
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+}
+
+tasks.withType(ProcessResources).configureEach {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            loader_version_range   : loader_version_range,
+            refinedstorage_version : refinedstorage_version,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+    ]
+    inputs.properties replaceProperties
+    filesMatching(['META-INF/neoforge.mods.toml']) {
+        expand replaceProperties
+    }
+}

@@ -1,0 +1,10 @@
+{
+  "type": "refinedstorage:recoloring",
+  "dye": {
+    "tag": "c:dyes/green"
+  },
+  "ingredient": {
+    "tag": "rsapg:advanced_pattern_grids"
+  },
+  "result": "rsapg:green_advanced_pattern_grid"
+}

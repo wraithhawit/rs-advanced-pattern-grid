@@ -1,0 +1,67 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="wraithhawit"
+description='''
+An Advanced Pattern Grid for Refined Storage 2: no blank-pattern slot, it takes blanks from the
+network; with an Autocrafting Upgrade it gets blanks crafted and keeps a spare of each ready; it
+encodes a Refined Fluid Substitution pattern when the recipe qualifies; and it leaves fuzzy mode
+off a pattern that fuzzy mode would not change.
+'''
+
+# Hooks Refined Storage's own pattern grid block entity, menu and screen.
+[[mixins]]
+config="${mod_id}.mixins.json"
+
+# EMI's recipe tree screen gets the "encode missing patterns" button.
+[[mixins]]
+config="${mod_id}.emi.mixins.json"
+requiredMods=["emi"]
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="[${neo_version},)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="refinedstorage"
+    type="required"
+    versionRange="[${refinedstorage_version},)"
+    ordering="AFTER"
+    side="BOTH"
+
+# RFS versions look like "1.21.1-2.0.0", which a "[2.0.0,)" range would reject.
+[[dependencies.${mod_id}]]
+    modId="refinedfluidsubstitution"
+    type="optional"
+    versionRange="*"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="emi"
+    type="optional"
+    versionRange="*"
+    ordering="AFTER"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="rsmbac"
+    type="optional"
+    versionRange="*"
+    ordering="AFTER"
+    side="BOTH"

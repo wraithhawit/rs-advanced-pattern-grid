@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "minVersion": "0.8.5",
+  "package": "com.wraithhawit.rsapg.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "AutocrafterBlockEntityAccessor",
+    "PatternGridBlockEntityAccessor",
+    "PatternGridBlockEntityMixin",
+    "PatternGridContainerMenuMixin"
+  ],
+  "client": [
+    "client.PatternGridScreenMixin"
+  ],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "values": [
+    "rsapg:white_advanced_pattern_grid",
+    "rsapg:orange_advanced_pattern_grid",
+    "rsapg:magenta_advanced_pattern_grid",
+    "rsapg:advanced_pattern_grid",
+    "rsapg:yellow_advanced_pattern_grid",
+    "rsapg:lime_advanced_pattern_grid",
+    "rsapg:pink_advanced_pattern_grid",
+    "rsapg:gray_advanced_pattern_grid",
+    "rsapg:light_gray_advanced_pattern_grid",
+    "rsapg:cyan_advanced_pattern_grid",
+    "rsapg:purple_advanced_pattern_grid",
+    "rsapg:blue_advanced_pattern_grid",
+    "rsapg:brown_advanced_pattern_grid",
+    "rsapg:green_advanced_pattern_grid",
+    "rsapg:red_advanced_pattern_grid",
+    "rsapg:black_advanced_pattern_grid"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "type": "refinedstorage:recoloring",
+  "dye": {
+    "tag": "c:dyes/light_gray"
+  },
+  "ingredient": {
+    "tag": "rsapg:advanced_pattern_grids"
+  },
+  "result": "rsapg:light_gray_advanced_pattern_grid"
+}

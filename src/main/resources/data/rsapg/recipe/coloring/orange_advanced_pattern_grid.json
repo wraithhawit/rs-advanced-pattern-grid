@@ -1,0 +1,10 @@
+{
+  "type": "refinedstorage:recoloring",
+  "dye": {
+    "tag": "c:dyes/orange"
+  },
+  "ingredient": {
+    "tag": "rsapg:advanced_pattern_grids"
+  },
+  "result": "rsapg:orange_advanced_pattern_grid"
+}

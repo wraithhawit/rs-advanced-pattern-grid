@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8.5",
+  "package": "com.wraithhawit.rsapg.mixin.emi",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [],
+  "client": [
+    "BoMScreenMixin"
+  ],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

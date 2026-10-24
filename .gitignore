@@ -1,0 +1,38 @@
+# Build output and local development state
+/.gradle/
+/build/
+/bin/
+/logs/
+/out/
+/run/
+/runs/
+/backups/
+/.agent-handoffs/
+/.idea/
+/.vscode/
+*.iml
+__pycache__/
+.classpath
+.project
+.settings/
+
+# Locally staged dependencies; keep only acquisition notes and checksums
+/libs/*
+!/libs/README.md
+!/libs/dependencies.sha256
+
+# Local configuration, credentials, logs and temporary copies
+/.env
+/.env.*
+/local.properties
+/gradle-local.properties
+*.log
+*.hprof
+*.orig
+*.bak
+*.tmp
+hs_err_pid*
+replay_pid*
+.DS_Store
+Thumbs.db
+build-first.log

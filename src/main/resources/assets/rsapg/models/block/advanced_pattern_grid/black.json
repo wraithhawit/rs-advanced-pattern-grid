@@ -1,0 +1,13 @@
+{
+  "parent": "refinedstorage:block/emissive_north_cutout",
+  "textures": {
+    "cutout": "refinedstorage:block/pattern_grid/cutouts/black",
+    "down": "rsapg:block/advanced_pattern_grid/bottom",
+    "east": "rsapg:block/advanced_pattern_grid/right",
+    "north": "rsapg:block/advanced_pattern_grid/front",
+    "particle": "rsapg:block/advanced_pattern_grid/right",
+    "south": "rsapg:block/advanced_pattern_grid/back",
+    "up": "rsapg:block/advanced_pattern_grid/top",
+    "west": "rsapg:block/advanced_pattern_grid/left"
+  }
+}
